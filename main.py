@@ -34,5 +34,6 @@ print("Done")
 res = client.chat.completions.create(model=MODEL, messages=messages)
 print(res)
 print(res.choices[0].message.content)
+print(f"Input Token: {res.usage.prompt_tokens}, Output Token: {res.usage.completion_tokens}")
 
 print("Done")
