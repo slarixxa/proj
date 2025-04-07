@@ -29,7 +29,7 @@ class DatabaseThat:
         """Fügt einen neuen Eintrag in die token_usage-Tabelle ein."""
         if not self.__conn or not self.__cursor:
             raise Exception("Datenbank ist nicht geöffnet. Rufe zuerst open_database() auf.")
-            
+
         
         self.__cursor.execute("""
         INSERT INTO token_usage (prompt_tokens, completion_tokens, model, vendor)
@@ -84,6 +84,13 @@ class DatabaseThat:
         """Destructor, um sicherzustellen, dass die Verbindung geschlossen wird."""
         self.close_database()
         print("close database")
+
+        #https://chatgpt.com/share/67f40bca-c6b4-8008-be73-eded6d31edc0
+        #erstllen tabelle und price
+
+        
+
+        
 
 
 
