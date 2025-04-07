@@ -8,6 +8,9 @@ load .env file and extract OPENAI_API_KEY
 import os 
 from dotenv import load_dotenv,find_dotenv
 from openai import OpenAI
+from database import DatabaseThat
+
+
 
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -22,6 +25,8 @@ MODEL = "gpt-4o-mini"
 load_dotenv(find_dotenv(), override=True)
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+db = DatabaseThat("token_usage.db")
+db.open_database()
 
 messages = [
     {"role": "system", "content": SYSTEM_PROMPT},
@@ -35,5 +40,10 @@ res = client.chat.completions.create(model=MODEL, messages=messages)
 print(res)
 print(res.choices[0].message.content)
 print(f"Input Token: {res.usage.prompt_tokens}, Output Token: {res.usage.completion_tokens}")
+
+completions_tokens = res.usage.completion_tokens
+prompt_tokens = res.usage.prompt_tokens
+
+db.add_token_usage(completion_tokens=completions_tokens, prompt_tokens=prompt_tokens, model=MODEL, vendor="OpenAI")
 
 print("Done")

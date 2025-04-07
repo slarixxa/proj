@@ -29,6 +29,7 @@ class DatabaseThat:
         """Fügt einen neuen Eintrag in die token_usage-Tabelle ein."""
         if not self.__conn or not self.__cursor:
             raise Exception("Datenbank ist nicht geöffnet. Rufe zuerst open_database() auf.")
+            
         
         self.__cursor.execute("""
         INSERT INTO token_usage (prompt_tokens, completion_tokens, model, vendor)
