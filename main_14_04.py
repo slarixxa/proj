@@ -1,9 +1,10 @@
 """
 main.py 
-17.03.2025
+14.04.2025
 
-load .env file and extract OPENAI_API_KEY
+load file OPENAI_API_KEY
 """
+
 
 import os 
 from dotenv import load_dotenv,find_dotenv
@@ -31,22 +32,17 @@ messages = [
     {"role": "user", "content": QUESTIONS}
 ]
 
-print(messages)
-print("Done")
-
 res = client.chat.completions.create(model=MODEL, messages=messages)
-print(res)
-print(res.choices[0].message.content)
-print(f"Input Token: {res.usage.prompt_tokens}, Output Token: {res.usage.completion_tokens}")
-
 completions_tokens = res.usage.completion_tokens
 prompt_tokens = res.usage.prompt_tokens
-
 db.add_token_usage(completion_tokens=completions_tokens, prompt_tokens=prompt_tokens, model=MODEL, vendor="OpenAI")
+print(res.choices[0].message.content)
 
-print(messages.append({"role" : "system", "content" : res.choices[0].message.content}))
-print(messages.append({"role": "user", "content" : "and of germany?"}))
-
-
-
+messages.append({"role" : "assistant", "content" : res.choices[0].message.content})
+messages.append({"role" : "user", "content" : "wie viele leben dort?"})
+res = client.chat.completions.create(model=MODEL, messages=messages)
+completions_tokens = res.usage.completion_tokens
+prompt_tokens = res.usage.prompt_tokens
+db.add_token_usage(completion_tokens=completions_tokens, prompt_tokens=prompt_tokens, model=MODEL, vendor="OpenAI")
+print(res.choices[0].message.content)
 print("Done")
