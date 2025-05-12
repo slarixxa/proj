@@ -54,8 +54,8 @@ print(res.choices[0].message.content)})
 print("Done")
 
 comnon_insdructions = "Ich will, dass du dir zunächst Gedanken machst, was du sagen möchtest, um dein Ziel zu erreichen. Schreibe dazu inneren Gedanken, Doppelpunkt, und dann deine inneren Gedanken in drei Sätzen, und dann formuliere, was du wirklich zum anderen sagen willst. Dazu Aussage, Doppelpunkt, und dann in drei Sätzen, was du sagen möchtest. Dann probiere es mal aus, ob es funktioniert, ansonsten gebe ich dir meines. Ich will, dass du dir zunächst überlegst, was du sagen möchtest, also innere Gedanken ausführst, und diese so gestaltest, dass du dein Ziel bestmöglich erreichst. Schreibe also innere Gedanken, Doppelpunkt, und dann die inneren Gedanken in drei Sätzen, und dann kannst du auf dieser Basis deine Äußerungen aufbauen. Schreibe Aussage, Doppelpunkt, und dann auch wieder in drei Sätzen die Aussage, die der Gesprächspartner erhalten wird. Schreibe bitte alles in eine zeile ohne backsalash n"
-system_prompt_0 = "Du bist ein idealistischer Student. Sprich mit Begeisterung darüber, wie man sich für das Studium motiviert hält. Gib jedes Mal eine neue, inspirierende Idee." + comnon_insdructions 
-system_prompt_1 = "Du bist ein pragmatischer Studienberater. Gib praktische, realistische Tipps, wie man im Studium motiviert bleiben kann. Gib jedes Mal eine andere konkrete Methode." + comnon_insdructions 
+system_prompt_0 = "Der mänliche Student har romantische absichten. Sprich mit Begeisterung darüber, wie man sich für das Studium motiviert hält. Gib jedes Mal eine neue, inspirierende Idee." + comnon_insdructions 
+system_prompt_1 = "Die weibliche Studentin ist sehr hilfsbereit. Gib praktische, realistische Tipps, wie man im Studium motiviert bleiben kann. Gib jedes Mal eine andere konkrete Methode." + comnon_insdructions 
 
 
 # Startfrage
@@ -77,9 +77,9 @@ for _ in range(5):
     # 1. Anfrage an den ersten Charakter (Student / Idealist)
     res_0 = client.chat.completions.create(model="gpt-4o-mini", messages=messages_0)
     
-    match = re.search(r"Gedanken:(.*)Aussage:(.*)", res_0.choices[0].message.content) #ab der stelle weiter machen, match finden 
+    match = re.search(r"Innere Gedanken: (.*)Aussage: (.*)",res_0.choices[0].message.content,re.DOTALL)
 
-    result = {
+    result_0 = {
 
     "internal_thoughts": match.group(1),
 
@@ -87,8 +87,8 @@ for _ in range(5):
 
     } if match else {}
 
-
-    print(result)
+    assistant_message_0 = result_0["utterance"]
+    print(result_0)
     # Tokens zählen und in der Datenbank speichern
     completions_tokens = res_0.usage.completion_tokens
     prompt_tokens = res_0.usage.prompt_tokens
@@ -102,10 +102,26 @@ for _ in range(5):
     messages_0.append({"role": "assistant", "content": assistant_message_0})
     
     # Die Frage des ersten Charakters zur messages_1 hinzufügen (Berater wird darauf antworten)
-    messages_1.append({"role": "user", "content": assistant_message_0})
+    messages_1.append({"role": "user", "content": result_0["utterance"]})
 
     # 2. Anfrage an den zweiten Charakter (Studienberater / Pragmatiker)
     res_1 = client.chat.completions.create(model="gpt-4o-mini", messages=messages_1)
+    print("🔍 Rohantwort Studienberater:", res_1.choices[0].message.content)
+    # Antwort extrahieren: Innere Gedanken und Aussage
+    match_1 = re.search(r"Gedanken:\s*(.*?)\s*Aussage:\s*(.*)", res_1.choices[0].message.content)
+
+    result_1 = {
+
+    "internal_thoughts": match_1.group(1),
+
+    "utterance": match_1.group(2)
+
+    } if match_1 else {}
+
+    assistant_message_1 = result_1.get("utterance", "⚠️ Fehler: Keine gültige Aussage erkannt.")
+    print(result_1)
+    messages_1.append({"role": "assistant", "content": res_1.choices[0].message.content})
+    messages_0.append({"role": "user", "content": result_1["utterance"]})
     
     # Tokens zählen und in der Datenbank speichern
     completions_tokens = res_1.usage.completion_tokens
@@ -114,13 +130,14 @@ for _ in range(5):
     
     # Antwort des zweiten Charakters (Studienberater) auslesen
     assistant_message_1 = res_1.choices[0].message.content
-    print(f"🧑‍💼 Studienberater (Pragmatiker): {assistant_message_1}")
-    
-    # Antwort des zweiten Charakters (Studienberater) zur messages_1 hinzufügen
-    messages_1.append({"role": "assistant", "content": assistant_message_1})
-    
-    # Die Frage des zweiten Charakters zur messages_0 hinzufügen (Student wird darauf antworten)
-    messages_0.append({"role": "user", "content": assistant_message_1})
+    # Ausgabe in der Konsole
+    print(f"🧑‍💼 Studienberater (Pragmatiker): {res_1.choices[0].message.content}")
+
+    # Antwort des Studienberaters speichern
+    messages_1.append({"role": "assistant", "content": res_1.choices[0].message.content})
+
+    # Nächste Frage für den Studenten auf Basis der Aussage des Beraters
+    messages_0.append({"role": "user", "content": result_1["utterance"]})
 
     # Optional kannst du die Konversation in der Konsole ausgeben
 print("\nAktueller Verlauf (messages_0):")
