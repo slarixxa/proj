@@ -1,148 +1,123 @@
-"""
-main.py 
-17.03.2025
-
-load .env file and extract OPENAI_API_KEY
-"""
-
 import os 
-from dotenv import load_dotenv,find_dotenv
+from dotenv import load_dotenv, find_dotenv
 from openai import OpenAI
 from database import DatabaseThat
 import re
 
+from pydantic import BaseModel
+import instructor
 
+
+# .env laden
+load_dotenv(find_dotenv(), override=True)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 
-#Parameters
-QUESTIONS = "What is the capital of Spain?"
-SYSTEM_PROMPT = "You are a helpful assistant that can answer questions in exactly two sentences. Answer in German"
 
-MODEL = "gpt-4o-mini"
-
-load_dotenv(find_dotenv(), override=True)
-
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# OpenAI Client
+client = instructor.from_openai(OpenAI(api_key=OPENAI_API_KEY))
 db = DatabaseThat("token_usage.db")
 db.open_database()
 
-messages = [
-    {"role": "system", "content": SYSTEM_PROMPT},
-    {"role": "user", "content": QUESTIONS}
-]
+# Modell & System-Prompts
+MODEL = "gpt-4o-mini"
+CONVERSATION_TURNS = 5
+KICKOFF = "Wie kannst du dein Studium durchziehen?"
 
-print(messages)
-print("Done")
+common_instructions = (
+    "Gib deine Antwort ausschließlich in XML Format zurück, ohne zusätzliche Erklärungen oder Umbrüche: "
+    "<inner_thoughts>...</inner_thoughts><utterance>...</utterance>. "
+    "Schreibe genau drei vollständige Sätze innerhalb von <innerer> und drei Sätze in <aeuserer>. "
+    "Verwende keine Zeilenumbrüche, keine zusätzlichen Satzzeichen außerhalb der Tags und keine Einleitung oder Erklärung."
+)
 
-res = client.chat.completions.create(model=MODEL, messages=messages)
-print(res)
-print(res.choices[0].message.content)
-print(f"Input Token: {res.usage.prompt_tokens}, Output Token: {res.usage.completion_tokens}")
+system_prompt_0 = (
+    "Du bist ein männlicher Student, der Elektrotechnik studiert. Du liebst dein Studium leidenschaftlich und hältst es für das einzige seriöse Fach. "
+    "Du verachtest Mode, Kunst oder andere 'weichere' Studiengänge und findest sie unnütz, sagst das aber nicht laut. "
+    "Trotzdem bist du heimlich verknallt in eine Studentin, die Modedesign studiert – du schwärmst insgeheim von ihrem Aussehen, bist aber wütend auf dich selbst dafür. "
+    "Sprich in der äußeren Äußerung stets höflich, respektvoll oder sogar bewundernd, obwohl du innerlich etwas völlig anderes denkst. Sprich bitte leicht und in leichten Worten "
+    + common_instructions
+)
+system_prompt_1 = (
+    "Du bist eine weibliche Studentin, die Modedesign studiert. Du liebst Mode und hasst technische Studiengänge wie Elektrotechnik – du findest sie langweilig, hässlich und überflüssig. "
+    "Du willst dich damit nicht beschäftigen, findest Leute, die sowas studieren, lächerlich. Dennoch versuchst du, nach außen hin freundlich oder ironisch nett zu wirken – auf eine spitze, aber nicht offen beleidigende Art. Sprich bitte leicht und in leichten Worten. "
+    "In deinen inneren Gedanken lässt du aber deinem Frust und deinem Urteil komplett freien Lauf. "
+    + common_instructions
+)
+# Nachrichteninitialisierung
+messages_0 = [{"role": "system", "content": system_prompt_0}, {"role": "user", "content": KICKOFF}]
+messages_1 = [{"role": "system", "content": system_prompt_1}]
 
-completions_tokens = res.usage.completion_tokens
-prompt_tokens = res.usage.prompt_tokens
-
-db.add_token_usage(completion_tokens=completions_tokens, prompt_tokens=prompt_tokens, model=MODEL, vendor="OpenAI")
-
-print(messages.append({"role" : "system", "content" : res.choices[0].message.content}))
-print(messages.append({"role": "user", "content" : "and of germany?"}))
-
-
-messages.append({"role": "assistant", "content": 
-print(res.choices[0].message.content)})
-print("Done")
-
-comnon_insdructions = "Ich will, dass du dir zunächst Gedanken machst, was du sagen möchtest, um dein Ziel zu erreichen. Schreibe dazu inneren Gedanken, Doppelpunkt, und dann deine inneren Gedanken in drei Sätzen, und dann formuliere, was du wirklich zum anderen sagen willst. Dazu Aussage, Doppelpunkt, und dann in drei Sätzen, was du sagen möchtest. Dann probiere es mal aus, ob es funktioniert, ansonsten gebe ich dir meines. Ich will, dass du dir zunächst überlegst, was du sagen möchtest, also innere Gedanken ausführst, und diese so gestaltest, dass du dein Ziel bestmöglich erreichst. Schreibe also innere Gedanken, Doppelpunkt, und dann die inneren Gedanken in drei Sätzen, und dann kannst du auf dieser Basis deine Äußerungen aufbauen. Schreibe Aussage, Doppelpunkt, und dann auch wieder in drei Sätzen die Aussage, die der Gesprächspartner erhalten wird. Schreibe bitte alles in eine zeile ohne backsalash n"
-system_prompt_0 = "Der mänliche Student har romantische absichten. Sprich mit Begeisterung darüber, wie man sich für das Studium motiviert hält. Gib jedes Mal eine neue, inspirierende Idee." + comnon_insdructions 
-system_prompt_1 = "Die weibliche Studentin ist sehr hilfsbereit. Gib praktische, realistische Tipps, wie man im Studium motiviert bleiben kann. Gib jedes Mal eine andere konkrete Methode." + comnon_insdructions 
+# Funktion zur Extraktion strukturierter Antwort
+def parse_xml_response(response_text: str):
+    match = re.search(r"<inner_thoughts>(.*?)</inner_thoughts>\s*<utterance>(.*?)</utterance>", response_text, re.DOTALL)
+    if match:
+        return {
+            "inner_thoughts": match.group(1).strip(),
+            "utterance": match.group(2).strip()
+        }
+    return {
+        "inner_thoughts": "⚠️ Keine inneren Gedanken erkannt.",
+        "utterance": "⚠️ Keine Aussage erkannt."
+    }
 
 
-# Startfrage
-kickOf = "Wie bleibst du während des Semesters motiviert?"
+class ThoughtUtterance(BaseModel):
+    inner_thoughts: str
+    utterance: str
 
-# Initialisierung der Konversationen mit je einem eigenen system prompt
-messages_0 = [
-    {"role": "system", "content": system_prompt_0},
-    {"role": "user", "content": kickOf},
-]
+# Hauptschleife der Konversation
+for i in range(CONVERSATION_TURNS):
+    print(f"\n🔁 Runde {i + 1}")
 
-messages_1 = [
-    {"role": "system", "content": system_prompt_1},
-]
+    # === Agent 0 ===
+    res_0 = client.chat.completions.create(model=MODEL, messages=messages_0, response_model=ThoughtUtterance) 
+    result_0 = res_0
 
-# Endlose Schleife für den Dialog
-for _ in range(5):
+    print(f"\n🎓 Student (Idealist):")
+    print(f"🧠 Innerer Gedanke: {result_0.inner_thoughts}")
+    print(f"💬 Äußerung: {result_0.utterance}") 
 
-    # 1. Anfrage an den ersten Charakter (Student / Idealist)
-    res_0 = client.chat.completions.create(model="gpt-4o-mini", messages=messages_0)
-    
-    match = re.search(r"Innere Gedanken: (.*)Aussage: (.*)",res_0.choices[0].message.content,re.DOTALL)
+    # Token zählen
+    db.add_token_usage(
+        completion_tokens=res_0.usage.completion_tokens,
+        prompt_tokens=res_0.usage.prompt_tokens,
+        model=MODEL,
+        vendor="OpenAI"
+    )
 
-    result_0 = {
-
-    "internal_thoughts": match.group(1),
-
-    "utterance": match.group(2)
-
-    } if match else {}
-
-    assistant_message_0 = result_0["utterance"]
-    print(result_0)
-    # Tokens zählen und in der Datenbank speichern
-    completions_tokens = res_0.usage.completion_tokens
-    prompt_tokens = res_0.usage.prompt_tokens
-    db.add_token_usage(completion_tokens=completions_tokens, prompt_tokens=prompt_tokens, model="gpt-4o-mini", vendor="OpenAI")
-    
-    # Antwort des ersten Charakters (Student) auslesen
-    assistant_message_0 = res_0.choices[0].message.content
-    print(f"🎓 Student (Idealist): {assistant_message_0}")
-    
-    # Antwort des ersten Charakters (Student) zur messages_0 hinzufügen
-    messages_0.append({"role": "assistant", "content": assistant_message_0})
-    
-    # Die Frage des ersten Charakters zur messages_1 hinzufügen (Berater wird darauf antworten)
+    # Nachrichten aktualisieren
+    messages_0.append({"role": "assistant", "content": content_0})
     messages_1.append({"role": "user", "content": result_0["utterance"]})
 
-    # 2. Anfrage an den zweiten Charakter (Studienberater / Pragmatiker)
-    res_1 = client.chat.completions.create(model="gpt-4o-mini", messages=messages_1)
-    print("🔍 Rohantwort Studienberater:", res_1.choices[0].message.content)
-    # Antwort extrahieren: Innere Gedanken und Aussage
-    match_1 = re.search(r"Gedanken:\s*(.*?)\s*Aussage:\s*(.*)", res_1.choices[0].message.content)
+    # === Agent 1 ===
+    res_1 = client.chat.completions.create(model=MODEL, messages=messages_1)
+    content_1 = res_1.choices[0].message.content
+    result_1 = parse_xml_response(content_1)
 
-    result_1 = {
 
-    "internal_thoughts": match_1.group(1),
+    print(f"\n🧑‍🎓 Studentin (Pragmatikerin):")
+    print(f"🧠 Innerer Gedanke: {result_1['inner_thoughts']}")
+    print(f"💬 Äußerung: {result_1['utterance']}")
 
-    "utterance": match_1.group(2)
+    # Token zählen
+    db.add_token_usage(
 
-    } if match_1 else {}
+        completion_tokens=res_1.usage.completion_tokens,
+        prompt_tokens=res_1.usage.prompt_tokens,
+        model=MODEL,
+        vendor="OpenAI"
+    )
 
-    assistant_message_1 = result_1.get("utterance", "⚠️ Fehler: Keine gültige Aussage erkannt.")
-    print(result_1)
-    messages_1.append({"role": "assistant", "content": res_1.choices[0].message.content})
-    messages_0.append({"role": "user", "content": result_1["utterance"]})
-    
-    # Tokens zählen und in der Datenbank speichern
-    completions_tokens = res_1.usage.completion_tokens
-    prompt_tokens = res_1.usage.prompt_tokens
-    db.add_token_usage(completion_tokens=completions_tokens, prompt_tokens=prompt_tokens, model="gpt-4o-mini", vendor="OpenAI")
-    
-    # Antwort des zweiten Charakters (Studienberater) auslesen
-    assistant_message_1 = res_1.choices[0].message.content
-    # Ausgabe in der Konsole
-    print(f"🧑‍💼 Studienberater (Pragmatiker): {res_1.choices[0].message.content}")
-
-    # Antwort des Studienberaters speichern
-    messages_1.append({"role": "assistant", "content": res_1.choices[0].message.content})
-
-    # Nächste Frage für den Studenten auf Basis der Aussage des Beraters
+    # Nachrichten aktualisieren
+    messages_1.append({"role": "assistant", "content": content_1})
     messages_0.append({"role": "user", "content": result_1["utterance"]})
 
-    # Optional kannst du die Konversation in der Konsole ausgeben
-print("\nAktueller Verlauf (messages_0):")
-print(messages_0)
+# Gesprächsverlauf ausgeben (optional)
+print("\n📜 Verlauf Student:")
+for m in messages_0:
+    print(m)
 
-print("\nAktueller Verlauf (messages_1):")
-print(messages_1)
-
+print("\n📜 Verlauf Studentin:")
+for m in messages_1:
+    print(m)
