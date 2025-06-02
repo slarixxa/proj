@@ -80,38 +80,42 @@ for i in range(CONVERSATION_TURNS):
 
     # Token zählen
     db.add_token_usage(
-        completion_tokens=res_0.usage.completion_tokens,
-        prompt_tokens=res_0.usage.prompt_tokens,
+        completion_tokens=res_0._raw_response.usage.total_tokens,
+        prompt_tokens=res_0._raw_response.usage.prompt_tokens,
         model=MODEL,
         vendor="OpenAI"
     )
 
+    content_0 = f"<inner_thoughts>{result_0.inner_thoughts}</inner_thoughts><utterance>{result_0.utterance}</utterance>"
+
     # Nachrichten aktualisieren
-    messages_0.append({"role": "assistant", "content": content_0})
-    messages_1.append({"role": "user", "content": result_0["utterance"]})
+    messages_0.append({"role": "assistant", "content": f"inner_thoughts: {result_0.inner_thoughts}, utterance: {result_0.utterance}"})
+    messages_1.append({"role": "user", "content": result_0.utterance })
 
     # === Agent 1 ===
-    res_1 = client.chat.completions.create(model=MODEL, messages=messages_1)
-    content_1 = res_1.choices[0].message.content
-    result_1 = parse_xml_response(content_1)
+    res_1 = client.chat.completions.create(model=MODEL, messages=messages_1, response_model=ThoughtUtterance)
+
+    result_1 = res_1
 
 
     print(f"\n🧑‍🎓 Studentin (Pragmatikerin):")
-    print(f"🧠 Innerer Gedanke: {result_1['inner_thoughts']}")
-    print(f"💬 Äußerung: {result_1['utterance']}")
+    print(f"🧠 Innerer Gedanke: {result_1.inner_thoughts}")
+    print(f"💬 Äußerung: {result_1.utterance}")
+
+    
 
     # Token zählen
     db.add_token_usage(
 
-        completion_tokens=res_1.usage.completion_tokens,
-        prompt_tokens=res_1.usage.prompt_tokens,
+        completion_tokens=res_1._raw_response.usage.total_tokens,
+        prompt_tokens=res_1._raw_response.usage.prompt_tokens,
         model=MODEL,
         vendor="OpenAI"
     )
 
     # Nachrichten aktualisieren
-    messages_1.append({"role": "assistant", "content": content_1})
-    messages_0.append({"role": "user", "content": result_1["utterance"]})
+    messages_1.append({"role": "assistant", "content": f"inner_thoughts: {result_1.inner_thoughts}, utterance: {result_1.utterance}"})
+    messages_0.append({"role": "user", "content": result_0.utterance })
 
 # Gesprächsverlauf ausgeben (optional)
 print("\n📜 Verlauf Student:")
