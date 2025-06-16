@@ -16,6 +16,10 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # OpenAI Client
 client = instructor.from_openai(OpenAI(api_key=OPENAI_API_KEY))
+
+client = instructor.patch(OpenAI())
+
+
 db = DatabaseThat("token_usage.db")
 db.open_database()
 
