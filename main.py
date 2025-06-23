@@ -70,6 +70,19 @@ class ThoughtUtterance(BaseModel):
     inner_thoughts: str
     utterance: str
 
+    
+
+
+all_answers = []
+
+# Kickoff-Frage als erste Benutzeräußerung speichern
+all_answers.append({
+    "runde": 0,
+    "speaker": "Studentin",  # Sie stellt die erste Frage
+    "inner_thoughts": "❓ Einstieg: Initiale Frage",
+    "utterance": KICKOFF
+})
+
 # Hauptschleife der Konversation
 for i in range(CONVERSATION_TURNS):
     print(f"\n🔁 Runde {i + 1}")
@@ -121,7 +134,26 @@ for i in range(CONVERSATION_TURNS):
     messages_1.append({"role": "assistant", "content": f"inner_thoughts: {result_1.inner_thoughts}, utterance: {result_1.utterance}"})
     messages_0.append({"role": "user", "content": result_0.utterance })
 
-# Gesprächsverlauf ausgeben (optional)
+    # In all_answers speichern
+    all_answers.append({
+    "runde": i + 1,
+    "speaker": "Student",
+    "inner_thoughts": result_0.inner_thoughts,
+    "utterance": result_0.utterance
+    })
+    all_answers.append({
+    "runde": i + 1,
+    "speaker": "Studentin",
+    "inner_thoughts": result_1.inner_thoughts,
+    "utterance": result_1.utterance
+    })
+
+
+
+
+
+
+# Gesprächsverlauf ausgeben 
 print("\n📜 Verlauf Student:")
 for m in messages_0:
     print(m)
@@ -129,3 +161,10 @@ for m in messages_0:
 print("\n📜 Verlauf Studentin:")
 for m in messages_1:
     print(m)
+
+
+print(all_answers)
+for entry in all_answers:
+    print(f"\n🔹 Runde {entry['runde']} – {entry['speaker']}")
+    print(f"🧠 Gedanken: {entry['inner_thoughts']}")
+    print(f"💬 Äußerung: {entry['utterance']}")
